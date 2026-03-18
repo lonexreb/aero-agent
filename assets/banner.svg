@@ -117,35 +117,45 @@
 
     <!-- Subtitle -->
     <text x="83" y="152" font-family="'SF Mono', 'Cascadia Code', 'Fira Code', monospace" font-size="16" fill="#8b949e" letter-spacing="3">
-      CFD-AWARE RESEARCH ASSISTANT
+      MULTI-DOMAIN F1 DEVELOPMENT PLATFORM
     </text>
 
     <!-- Tagline -->
     <text x="83" y="185" font-family="'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" fill="#c9d1d9" opacity="0.85">
-      Make every CFD run count under FIA ATR constraints.
+      6 domain agents. One goal: make every simulation count.
     </text>
 
     <!-- Metric badges -->
     <g transform="translate(83, 215)">
       <!-- Badge 1 -->
-      <rect x="0" y="0" width="130" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <rect x="0" y="0" width="80" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
       <circle cx="16" cy="16" r="4" fill="#e10600"/>
-      <text x="28" y="21" font-family="'SF Mono', monospace" font-size="11" fill="#8b949e">ATR Budget</text>
+      <text x="28" y="21" font-family="'SF Mono', monospace" font-size="11" fill="#8b949e">Aero</text>
 
       <!-- Badge 2 -->
-      <rect x="145" y="0" width="140" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
-      <circle cx="161" cy="16" r="4" fill="#00d4ff"/>
-      <text x="173" y="21" font-family="'SF Mono', monospace" font-size="11" fill="#8b949e">RAG + pgvector</text>
+      <rect x="92" y="0" width="110" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <circle cx="108" cy="16" r="4" fill="#00d4ff"/>
+      <text x="120" y="21" font-family="'SF Mono', monospace" font-size="11" fill="#8b949e">Materials</text>
 
       <!-- Badge 3 -->
-      <rect x="300" y="0" width="160" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
-      <circle cx="316" cy="16" r="4" fill="#7b61ff"/>
-      <text x="328" y="21" font-family="'SF Mono', monospace" font-size="11" fill="#8b949e">CFD Correlation</text>
+      <rect x="214" y="0" width="115" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <circle cx="230" cy="16" r="4" fill="#7b61ff"/>
+      <text x="242" y="21" font-family="'SF Mono', monospace" font-size="11" fill="#8b949e">Chemistry</text>
 
       <!-- Badge 4 -->
-      <rect x="475" y="0" width="150" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
-      <circle cx="491" cy="16" r="4" fill="#3fb950"/>
-      <text x="503" y="21" font-family="'SF Mono', monospace" font-size="11" fill="#8b949e">FastF1 Telemetry</text>
+      <rect x="341" y="0" width="115" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <circle cx="357" cy="16" r="4" fill="#ff9500"/>
+      <text x="369" y="21" font-family="'SF Mono', monospace" font-size="11" fill="#8b949e">Structural</text>
+
+      <!-- Badge 5 -->
+      <rect x="468" y="0" width="105" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <circle cx="484" cy="16" r="4" fill="#ff3b3b"/>
+      <text x="496" y="21" font-family="'SF Mono', monospace" font-size="11" fill="#8b949e">Thermal</text>
+
+      <!-- Badge 6 -->
+      <rect x="585" y="0" width="115" height="32" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <circle cx="601" cy="16" r="4" fill="#3fb950"/>
+      <text x="613" y="21" font-family="'SF Mono', monospace" font-size="11" fill="#8b949e">ERS/Strategy</text>
     </g>
 
     <!-- Version / status tag -->

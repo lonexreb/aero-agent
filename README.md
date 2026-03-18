@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <strong>CFD-Aware Research Assistant for Formula 1 Aerodynamicists</strong><br/>
-  <em>Synthesize literature. Correlate CFD. Optimize every simulation hour.</em>
+  <strong>Multi-Domain F1 Car Development Platform</strong><br/>
+  <em>6 domain agents. One goal: make every simulation count.</em>
 </p>
 
 <p align="center">
@@ -12,6 +12,10 @@
   <a href="#tech-stack"><img src="https://img.shields.io/badge/LLM-GPT--4o_%7C_Claude-8A2BE2?style=flat-square" alt="LLM"/></a>
   <a href="#tech-stack"><img src="https://img.shields.io/badge/RAG-LlamaIndex_%2B_Qdrant-00d4ff?style=flat-square" alt="RAG"/></a>
   <a href="#tech-stack"><img src="https://img.shields.io/badge/CFD-OpenFOAM_%7C_SU2-FF6B35?style=flat-square" alt="CFD"/></a>
+  <a href="#tech-stack"><img src="https://img.shields.io/badge/MCP-Tool_Servers-00cc88?style=flat-square" alt="MCP"/></a>
+  <a href="#tech-stack"><img src="https://img.shields.io/badge/Orchestration-LangGraph-ff6f00?style=flat-square" alt="LangGraph"/></a>
+  <a href="#tech-stack"><img src="https://img.shields.io/badge/Pipeline-AutoResearchClaw-9c27b0?style=flat-square" alt="AutoResearchClaw"/></a>
+  <a href="#tech-stack"><img src="https://img.shields.io/badge/Runtime-NemoClaw-76b900?style=flat-square" alt="NemoClaw"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"/></a>
   <a href="#contributing"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome"/></a>
 </p>
@@ -20,19 +24,28 @@
 
 ## The Problem
 
-F1 teams operate under **FIA Aerodynamic Testing Restrictions (ATR)** — every CFD simulation hour is capped based on constructor standings. Teams can't brute-force their way to aerodynamic solutions. A wrong simulation costs real competitive advantage.
+F1 car development spans **6 tightly coupled engineering domains** — aerodynamics, materials, chemistry, structural, thermal, and energy/strategy. A change in one domain cascades into others: a lighter floor (materials) changes flex behavior (structural) which affects downforce (aero) which changes cooling requirements (thermal).
 
-**AeroAgent makes every CFD run count.**
+Teams operate under **FIA Aerodynamic Testing Restrictions (ATR)** — every CFD simulation hour is capped based on constructor standings. Similar constraints apply across all simulation types: limited wind tunnel time, restricted dyno hours, and tight development schedules.
 
-It ingests aerodynamics literature, correlates findings with your CFD results and on-track telemetry, then produces ranked design modification proposals — each with literature backing, expected aero delta, CFD budget cost, and confidence level.
+**AeroAgent makes every simulation count — across all 6 domains.**
+
+Each domain agent ingests relevant scientific literature, correlates findings with simulation results and on-track telemetry, then produces ranked design modification proposals. The orchestration layer resolves cross-domain trade-offs and ranks proposals by multi-objective Pareto optimality.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  "The literature suggests vortex generators at 60% chord        │
-│   improve diffuser performance by 3-5%. Your CFD shows          │
-│   separation at 55% chord. Telemetry confirms rear instability  │
-│   at high speed. Estimated gain: +8 counts Cl_rear.             │
-│   CFD cost: 2 ATR-hours. ROI score: 4.0"                       │
+│  AERO:  "Literature suggests VGs at 60% chord improve diffuser │
+│          performance. Your CFD shows separation at 55% chord.   │
+│          Estimated gain: +8 counts Cl_rear. CFD cost: 2 hrs."  │
+│                                                                  │
+│  THERMAL: "Sidepod redesign reduces cooling drag by 3 counts   │
+│            but raises brake duct temps by 12°C. Within limits." │
+│                                                                  │
+│  MATERIALS: "CFRP layup reorientation saves 0.8kg on floor.    │
+│              Requires CFD re-evaluation of flex behavior."      │
+│                                                                  │
+│  ORCHESTRATOR: Cross-domain rank → VG first (highest ROI),     │
+│                then CFRP layup (cascade to aero re-eval)        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -40,46 +53,32 @@ It ingests aerodynamics literature, correlates findings with your CFD results an
 
 ## Architecture
 
+AeroAgent uses a 4-layer architecture with 6 specialized domain agents. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full specification.
+
 ```
-                    ┌──────────────────────────────────┐
-                    │        KNOWLEDGE LAYER           │
-                    │                                  │
-                    │  arXiv ─┐                        │
-                    │  SAE   ─┼─▶ Docling ─▶ Chunks   │
-                    │  AIAA  ─┘     │          │       │
-                    │  OpenAlex     ▼          ▼       │
-                    │  Semantic  Paper      Qdrant     │
-                    │  Scholar   Analyzer   (pgvector) │
-                    │               │          │       │
-                    │  FIA Regs ────┘          │       │
-                    └──────────────┬───────────┘
-                                  │
-                    ┌─────────────▼────────────────────┐
-                    │        ANALYSIS LAYER            │
-                    │                                  │
-                    │  CFD Results ──┐                 │
-                    │  (OpenFOAM,    ├─▶ Correlation   │
-                    │   SU2,         │    Engine        │
-                    │   Star-CCM+)   │      │          │
-                    │                │      ▼          │
-                    │  FastF1 ───────┘  Insight        │
-                    │  Telemetry        Ranker         │
-                    │                      │           │
-                    │  ATR Budget ─────────┘           │
-                    │  Tracker                         │
-                    └──────────────┬───────────────────┘
-                                  │
-                    ┌─────────────▼────────────────────┐
-                    │       SUGGESTION LAYER           │
-                    │                                  │
-                    │  1. VG on diffuser    (ROI: 4.0) │
-                    │  2. Floor edge fence  (ROI: 3.2) │
-                    │  3. Endplate cutout   (ROI: 2.8) │
-                    │                                  │
-                    │  Each with: literature citations, │
-                    │  expected ΔCl/ΔCd, CFD cost,     │
-                    │  confidence, risk assessment      │
-                    └──────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  LAYER 4 — RUNTIME (NemoClaw Sandbox)                               │
+│  Network isolation · Filesystem restriction · Continuous operation   │
+├─────────────────────────────────────────────────────────────────────┤
+│  LAYER 3 — ORCHESTRATION (LangGraph State Machine)                  │
+│  Cross-domain dependencies · Simulation scheduling · Pareto ranking │
+├─────────────────────────────────────────────────────────────────────┤
+│  LAYER 2 — DOMAIN AGENTS (AutoResearchClaw 8-Phase Pipeline)        │
+│                                                                      │
+│  ┌────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────┐ ┌───┐│
+│  │  AERO  │ │MATERIALS │ │CHEMISTRY │ │STRUCTURAL│ │THERMAL│ │ERS││
+│  │        │ │          │ │          │ │          │ │       │ │   ││
+│  │OpenFOAM│ │Materials │ │Cantera   │ │CalculiX  │ │OF-CHT │ │F1 ││
+│  │SU2     │ │Project   │ │RDKit     │ │Code_Aster│ │CoolPrp│ │CAS││
+│  │foamlib │ │AFLOW     │ │RMG       │ │preCICE   │ │Elmer  │ │ADi││
+│  │PyVista │ │LAMMPS    │ │GROMACS   │ │          │ │       │ │   ││
+│  └────────┘ └──────────┘ └──────────┘ └──────────┘ └───────┘ └───┘│
+│                                                                      │
+│  Each agent: own Qdrant collection · domain schemas · eval metrics  │
+├─────────────────────────────────────────────────────────────────────┤
+│  LAYER 1 — MCP TOOL LAYER                                           │
+│  openfoam-mcp-server · mcp.science · Scite MCP · domain MCP servers│
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -104,15 +103,15 @@ AeroAgent uses a modern, production-grade Python stack. Every choice is delibera
 | Component | Tool | Why |
 |:--|:--|:--|
 | **RAG Framework** | [LlamaIndex](https://docs.llamaindex.ai/) `>= 0.11` | Best ingestion/retrieval for scientific docs. 150+ connectors. |
-| **Orchestration** | [LangGraph](https://langchain-ai.github.io/langgraph/) `>= 0.2` | Stateful graph workflows for multi-step correlation analysis. |
+| **Orchestration** | [LangGraph](https://langchain-ai.github.io/langgraph/) `>= 0.2` | Stateful graph workflows for multi-step correlation and cross-domain orchestration. |
 | **LLM Gateway** | [LiteLLM](https://github.com/BerriAI/litellm) `>= 1.55` | Unified API across GPT-4o + Claude. Cost tracking, fallback routing. |
-| **Vector Database** | [Qdrant](https://qdrant.tech/) `>= 1.12` | Rich payload filtering for aero metadata (Cd, Cl, flow regime, Re). |
-| **Relational DB** | [PostgreSQL](https://www.postgresql.org/) `>= 16` | ATR budget tracking, CFD run history, telemetry sessions. |
+| **Vector Database** | [Qdrant](https://qdrant.tech/) `>= 1.12` | Rich payload filtering for domain metadata (Cd, Cl, flow regime, Re, material properties). |
+| **Relational DB** | [PostgreSQL](https://www.postgresql.org/) `>= 16` | ATR budget tracking, simulation run history, telemetry sessions. |
 | **Embeddings** | Cohere embed-v4 / [Jina v3](https://jina.ai/embeddings/) | Top MTEB scores. Jina v3's late chunking preserves cross-section context in papers. |
 | **PDF Parsing** | [Docling](https://github.com/docling-project/docling) `>= 2.0` | IBM Granite VLM. Best structural extraction for scientific PDFs (tables, equations, figures). |
 | **PDF Fallback** | [Marker](https://github.com/VikParuchuri/marker) `>= 1.0` | Fast GPU/MPS batch processing for bulk paper ingestion. |
 
-### Domain-Specific
+### Aerodynamics
 
 | Component | Tool | Why |
 |:--|:--|:--|
@@ -120,9 +119,27 @@ AeroAgent uses a modern, production-grade Python stack. Every choice is delibera
 | **OpenFOAM Parsing** | [foamlib](https://github.com/gerlero/foamlib) `>= 1.2` | Modern, typed, async. Published in JOSS 2025. |
 | **SU2 Parsing** | pysu2 (native) + pandas | SU2's native Python wrapper + CSV force history parsing. |
 | **CFD Visualization** | [PyVista](https://docs.pyvista.org/) `>= 0.47` | Pythonic VTK wrapper. Reads VTK, STL, OpenFOAM, CGNS. Used at NASA. |
+| **Paper Discovery** | [OpenAlex](https://openalex.org/) + [Semantic Scholar](https://www.semanticscholar.org/) + [arXiv](https://arxiv.org/) | OpenAlex for broad discovery, S2 for citation graphs, arXiv for preprints. |
 | **Surrogate Models** | [DeepXDE](https://deepxde.readthedocs.io/) `>= 1.15` (prototype) / [NVIDIA PhysicsNeMo](https://github.com/NVIDIA/physicsnemo) (production) | PINNs for prototype. FNO-based surrogates via PhysicsNeMo for production. |
-| **Paper Discovery** | [OpenAlex](https://openalex.org/) + [Semantic Scholar](https://www.semanticscholar.org/) + [arXiv](https://arxiv.org/) | OpenAlex for broad discovery, S2 for citation graphs + SPECTER2 embeddings, arXiv for preprints. |
-| **Dashboard** | [Streamlit](https://streamlit.io/) (MVP) / [Plotly Dash](https://dash.plotly.com/) (production) | Streamlit for rapid prototyping; Dash for complex interactive engineering dashboards. |
+
+### Multi-Domain Tools
+
+| Domain | Tools | Purpose |
+|:--|:--|:--|
+| **Materials** | [Materials Project API](https://materialsproject.org/), [AFLOW](http://aflow.org/), LAMMPS | Material property database, crystal structure search, molecular dynamics |
+| **Chemistry** | [Cantera](https://cantera.org/), [RDKit](https://www.rdkit.org/), [RMG](https://rmg.mit.edu/), GROMACS | Combustion kinetics, molecular properties, reaction mechanisms, MD |
+| **Structural** | [CalculiX](http://www.calculix.de/), [Code_Aster](https://www.code-aster.org/), [preCICE](https://precice.org/) | FEA stress/fatigue, advanced FEA, fluid-structure interaction coupling |
+| **Thermal** | OpenFOAM CHT, [CoolProp](http://www.coolprop.org/), [Elmer](https://www.csc.fi/web/elmer) | Conjugate heat transfer, thermodynamic properties, multiphysics |
+| **ERS/Strategy** | [CasADi](https://web.casadi.org/), [OpenMDAO](https://openmdao.org/), [Gymnasium](https://gymnasium.farama.org/) | Optimal control, multidisciplinary optimization, RL for strategy |
+
+### Agent Infrastructure
+
+| Component | Tool | Purpose |
+|:--|:--|:--|
+| **Research Pipeline** | [AutoResearchClaw](https://github.com/TechxGenus/AutoResearchClaw) | 8-phase autonomous research-to-report pipeline |
+| **Agent Runtime** | NemoClaw | Sandboxed always-on agent runtime with network isolation |
+| **MCP Servers** | openfoam-mcp-server, mcp.science, Scite MCP | Simulation tool access via Model Context Protocol |
+| **Dashboard** | [Streamlit](https://streamlit.io/) (MVP) / [Plotly Dash](https://dash.plotly.com/) (production) | Rapid prototyping → complex engineering dashboards |
 
 ### LLM Routing Strategy
 
@@ -142,7 +159,8 @@ Routing is handled by LiteLLM proxy with tag-based model groups — the applicat
 
 ```
 aero-agent/
-├── pyproject.toml                  # uv-managed, PEP 735 dependency groups
+├── pyproject.toml                      # uv-managed, PEP 735 dependency groups
+├── ARCHITECTURE.md                     # Full architecture specification
 ├── README.md
 ├── LICENSE
 ├── assets/
@@ -150,53 +168,126 @@ aero-agent/
 ├── src/
 │   └── aero_agent/
 │       ├── __init__.py
-│       ├── main.py                 # FastAPI application entrypoint
-│       ├── config.py               # Pydantic Settings configuration
-│       ├── literature/
-│       │   ├── scanner.py          # Multi-source paper discovery (OpenAlex, S2, arXiv)
-│       │   ├── paper_analyzer.py   # LLM-powered aero insight extraction (Cd, Cl, flow)
-│       │   ├── knowledge_base.py   # RAG index over aero knowledge (Qdrant)
-│       │   ├── regulation_parser.py # FIA technical regulation parsing (Docling)
-│       │   └── citation_verifier.py # Verify citation accuracy and provenance
-│       ├── cfd/
-│       │   ├── result_parser.py    # Parse OpenFOAM (foamlib) / SU2 (pysu2) / Star-CCM+
-│       │   ├── force_analyzer.py   # Cd, Cl, COP, moment coefficient analysis
-│       │   ├── flow_detector.py    # Detect separation, vortex structures, recirculation
-│       │   ├── design_modifier.py  # Propose geometry modifications from insights
-│       │   └── budget_tracker.py   # FIA ATR CFD budget tracking & ROI thresholds
+│       ├── main.py                     # FastAPI application entrypoint
+│       ├── config.py                   # Pydantic Settings configuration
+│       │
+│       ├── domains/                    # 6 domain agents
+│       │   ├── base.py                 # Base domain agent (AutoResearchClaw pipeline)
+│       │   ├── aero/                   # Aerodynamics: OpenFOAM, SU2, foamlib, PyVista
+│       │   │   ├── agent.py
+│       │   │   ├── scanner.py
+│       │   │   ├── paper_analyzer.py
+│       │   │   ├── cfd_parser.py
+│       │   │   ├── force_analyzer.py
+│       │   │   ├── flow_detector.py
+│       │   │   ├── design_modifier.py
+│       │   │   ├── budget_tracker.py
+│       │   │   └── schemas.py
+│       │   ├── materials/              # Materials: MatProject, AFLOW, LAMMPS
+│       │   │   ├── agent.py
+│       │   │   ├── matproject_client.py
+│       │   │   ├── aflow_client.py
+│       │   │   ├── lammps_runner.py
+│       │   │   └── schemas.py
+│       │   ├── chemistry/              # Chemistry: Cantera, RDKit, RMG
+│       │   │   ├── agent.py
+│       │   │   ├── cantera_runner.py
+│       │   │   ├── rdkit_analyzer.py
+│       │   │   ├── rmg_client.py
+│       │   │   └── schemas.py
+│       │   ├── structural/             # Structural: CalculiX, Code_Aster, preCICE
+│       │   │   ├── agent.py
+│       │   │   ├── calculix_runner.py
+│       │   │   ├── precice_coupler.py
+│       │   │   └── schemas.py
+│       │   ├── thermal/                # Thermal: OpenFOAM CHT, CoolProp, Elmer
+│       │   │   ├── agent.py
+│       │   │   ├── cht_runner.py
+│       │   │   ├── coolprop_client.py
+│       │   │   └── schemas.py
+│       │   └── ers/                    # ERS/Strategy: CasADi, OpenMDAO, Gymnasium
+│       │       ├── agent.py
+│       │       ├── casadi_optimizer.py
+│       │       ├── openmda_runner.py
+│       │       ├── strategy_env.py
+│       │       └── schemas.py
+│       │
+│       ├── research/                   # AutoResearchClaw 8-phase pipeline
+│       │   ├── pipeline.py
+│       │   ├── scoping.py              # Phase A
+│       │   ├── discovery.py            # Phase B
+│       │   ├── synthesis.py            # Phase C
+│       │   ├── design.py               # Phase D
+│       │   ├── execution.py            # Phase E
+│       │   ├── analysis.py             # Phase F
+│       │   ├── writing.py              # Phase G
+│       │   └── finalization.py         # Phase H
+│       │
+│       ├── orchestration/              # LangGraph state machine
+│       │   ├── graph.py
+│       │   ├── dependency_resolver.py
+│       │   ├── conflict_resolver.py
+│       │   ├── scheduler.py
+│       │   └── pareto_ranker.py
+│       │
+│       ├── mcp/                        # MCP server clients
+│       │   ├── openfoam_mcp.py
+│       │   ├── science_mcp.py
+│       │   └── scite_mcp.py
+│       │
+│       ├── runtime/                    # NemoClaw integration (Phase 5)
+│       │   ├── sandbox.py
+│       │   ├── inference_router.py
+│       │   └── monitor.py
+│       │
+│       ├── literature/                 # Shared literature utilities
+│       │   ├── knowledge_base.py
+│       │   ├── regulation_parser.py
+│       │   └── citation_verifier.py
+│       │
 │       ├── correlation/
-│       │   ├── lit_to_cfd.py       # Correlate literature insights with team CFD data
-│       │   ├── telemetry_validator.py  # Validate CFD predictions vs on-track telemetry
-│       │   └── insight_ranker.py   # Rank suggestions by expected ΔCl/ΔCd per ATR-hour
-│       ├── suggestions/
-│       │   ├── design_generator.py # Generate ranked design modification proposals
-│       │   ├── roi_estimator.py    # Estimate aerodynamic gain per CFD-hour cost
-│       │   └── optimizer.py        # Feedback loop for suggestion quality improvement
+│       │   ├── lit_to_sim.py
+│       │   ├── telemetry_validator.py
+│       │   └── insight_ranker.py
+│       │
 │       ├── telemetry/
-│       │   ├── fastf1_client.py    # FastF1 API wrapper with caching
-│       │   ├── speed_trace.py      # Straight/corner speed extraction and analysis
-│       │   └── aero_balance.py     # Estimate front/rear aero balance from telemetry
+│       │   ├── fastf1_client.py
+│       │   ├── speed_trace.py
+│       │   └── aero_balance.py
+│       │
 │       └── api/
-│           ├── routes.py           # FastAPI route definitions
-│           └── schemas.py          # API request/response Pydantic models
+│           ├── routes.py
+│           └── schemas.py
+│
 ├── tests/
 │   ├── conftest.py
-│   ├── test_literature/
-│   ├── test_cfd/
+│   ├── test_domains/
+│   │   ├── test_aero/
+│   │   ├── test_materials/
+│   │   ├── test_chemistry/
+│   │   ├── test_structural/
+│   │   ├── test_thermal/
+│   │   └── test_ers/
+│   ├── test_research/
+│   ├── test_orchestration/
 │   ├── test_correlation/
-│   ├── test_suggestions/
 │   └── test_telemetry/
+│
 ├── data/
-│   ├── regulations/                # FIA technical regulation PDFs
-│   ├── aero_knowledge_base/        # Seeded aero papers and reference material
-│   └── reference_geometries/       # Open-source simplified F1 geometry
+│   ├── regulations/                    # FIA technical regulation PDFs
+│   ├── aero_knowledge_base/            # Seeded aero papers and reference material
+│   ├── reference_geometries/           # Open-source simplified F1 geometry
+│   └── chemistry/
+│       └── mechanisms/                 # Cantera reaction mechanism files
+│
 ├── scripts/
-│   ├── scan_papers.py              # CLI: discover and ingest new papers
-│   ├── ingest_cfd_results.py       # CLI: parse and index CFD results
-│   └── correlate_telemetry.py      # CLI: run telemetry-CFD correlation
+│   ├── scan_papers.py
+│   ├── ingest_cfd_results.py
+│   └── correlate_telemetry.py
+│
 └── docker/
     ├── Dockerfile
-    └── docker-compose.yml          # Qdrant + PostgreSQL + AeroAgent
+    └── docker-compose.yml              # Qdrant + PostgreSQL + AeroAgent
 ```
 
 ---
@@ -224,7 +315,7 @@ docker compose -f docker/docker-compose.yml up -d
 
 # Copy and configure environment
 cp .env.example .env
-# Edit .env with your API keys (OpenAI, Anthropic, Cohere, etc.)
+# Edit .env with your API keys (OpenAI, Anthropic, Cohere, Materials Project, etc.)
 
 # Run the application
 uv run python -m aero_agent.main
@@ -258,29 +349,48 @@ curl -X POST http://localhost:8000/api/suggestions \
 
 - [ ] Multi-source paper scanner (OpenAlex, Semantic Scholar, arXiv)
 - [ ] PDF parsing pipeline (Docling + Marker fallback)
-- [ ] LLM-powered aero insight extraction (Cd, Cl, flow structures, Re)
+- [ ] LLM-powered insight extraction parameterized by domain
 - [ ] RAG knowledge base with Qdrant (hybrid vector + metadata search)
 - [ ] FIA regulation parser
 - [ ] FastF1 telemetry integration
 - [ ] Natural language query API
 - [ ] Streamlit dashboard (MVP)
 
-### Phase 2 — CFD Integration (12 weeks)
+### Phase 2 — Aero Agent (10 weeks)
 
 - [ ] CFD result parser (OpenFOAM via foamlib, SU2 via pysu2)
+- [ ] Flow feature detection (separation, vortex structures)
 - [ ] Literature-CFD correlation engine
+- [ ] Telemetry-CFD validation pipeline (FastF1)
 - [ ] Design suggestion generator with ROI ranking
 - [ ] ATR budget optimization with dynamic ROI thresholds
-- [ ] Telemetry-CFD validation pipeline
 - [ ] PyVista-powered flow visualization
+- [ ] AutoResearchClaw 8-phase pipeline for aero domain
 
-### Phase 3 — Surrogate Models & Production (8 weeks)
+### Phase 3 — Materials + Chemistry Agents (8 weeks)
 
-- [ ] DeepXDE-based PINN surrogates for rapid Cl/Cd prediction
-- [ ] NVIDIA PhysicsNeMo FNO integration for production surrogates
-- [ ] Plotly Dash production dashboard
-- [ ] Docker deployment with Qdrant + PostgreSQL
-- [ ] Feedback loop for suggestion quality (optimizer)
+- [ ] Materials Agent (Materials Project, AFLOW, LAMMPS)
+- [ ] Chemistry Agent (Cantera, RDKit, RMG)
+- [ ] Domain-specific Qdrant collections and schemas
+- [ ] Cross-domain dependency handling
+- [ ] MCP servers for mcp.science, Cantera, CalculiX
+
+### Phase 4 — Structural + Thermal + ERS Agents (8 weeks)
+
+- [ ] Structural Agent (CalculiX, Code_Aster, preCICE)
+- [ ] Thermal Agent (OpenFOAM CHT, CoolProp, Elmer)
+- [ ] ERS/Strategy Agent (CasADi, OpenMDAO, Gymnasium)
+- [ ] Full cross-domain dependency graph
+- [ ] Multi-objective Pareto ranking across all 6 domains
+- [ ] LangGraph orchestration for conflict resolution
+
+### Phase 5 — NemoClaw Integration (6 weeks)
+
+- [ ] NemoClaw sandbox deployment
+- [ ] Network isolation and filesystem restriction
+- [ ] Continuous overnight simulation campaigns
+- [ ] MetaClaw-style cross-run learning
+- [ ] Surrogate model training (DeepXDE → PhysicsNeMo)
 
 ---
 
@@ -314,11 +424,25 @@ CFD cost:         2 ATR-hours
 Confidence:       HIGH (3 corroborating sources)
 ```
 
+### Cross-Domain Dependency Resolution
+
+When domain agents propose conflicting changes, the orchestration layer resolves trade-offs:
+
+```
+AERO wants:      Thinner rear wing endplate (less drag)
+STRUCTURAL needs: Minimum 3mm thickness for stiffness
+THERMAL says:     Thinner section reduces heat soak from exhaust
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Resolution:       2.5mm CFRP with optimized layup → meets structural
+                  requirement at reduced weight. Aero + thermal benefit.
+                  Combined ROI: 3.8 (Pareto-optimal across 3 domains)
+```
+
 ### Hybrid RAG Search
 
 Papers are indexed with both vector embeddings and structured metadata, enabling queries like:
 
-> "Find papers about vortex shedding on front wing endplates at Re > 5×10⁶ published after 2022"
+> "Find papers about vortex shedding on front wing endplates at Re > 5x10^6 published after 2022"
 
 This combines semantic similarity (vector) with exact metadata filtering (Re, year, component) — powered by Qdrant's payload filtering during HNSW search.
 
@@ -329,21 +453,30 @@ This combines semantic similarity (vector) with exact metadata filtering (Re, ye
 | User | Use Case |
 |:--|:--|
 | **F1 Aero Departments** | Maximize aerodynamic gains per ATR-hour across development cycles |
+| **Materials Engineers** | Optimize CFRP layups, explore novel composites, reduce mass |
+| **Powertrain Engineers** | Fuel formulation, lubricant optimization, ERS deployment strategy |
+| **Race Strategists** | Energy deployment optimization, tire strategy, active aero decisions |
 | **Formula E Teams** | Literature-driven design optimization under tighter budgets |
-| **Motorsport Consultancies** | Rapid literature review and CFD prioritization for clients |
-| **University FSAE Teams** | Access professional-grade aero research tooling on student budgets |
+| **Motorsport Consultancies** | Rapid literature review and simulation prioritization for clients |
+| **University FSAE Teams** | Access professional-grade research tooling on student budgets |
 | **Aero Researchers** | Structured knowledge base of aerodynamics literature with CFD context |
 
 ---
 
 ## Success Metrics
 
-| Metric | Target |
-|:--|:--|
-| Literature coverage | Index >500 relevant aero papers with structured insights |
-| Query quality | >75% of RAG answers rated "relevant and accurate" by aero engineers |
-| Suggestion quality | >50% of design proposals deemed "worth investigating" |
-| Telemetry correlation | CFD-to-track: within 2% for drag, 5% for downforce |
+| Metric | Target | Phase |
+|:--|:--|:--|
+| Literature coverage | Index >500 relevant aero papers with structured insights | 1 |
+| Query quality | >75% of RAG answers rated "relevant and accurate" by engineers | 1 |
+| Suggestion quality | >50% of design proposals deemed "worth investigating" | 2 |
+| Telemetry correlation | CFD-to-track: within 2% for drag, 5% for downforce | 2 |
+| Materials accuracy | Property predictions within 10% of experimental values | 3 |
+| Chemistry accuracy | Combustion sims within 5% of dyno measurements | 3 |
+| FEA correlation | Stress predictions within 8% of physical test results | 4 |
+| Thermal accuracy | Temperature predictions within 5C of track measurements | 4 |
+| Cross-domain proposals | >30% of proposals span multiple domains | 4 |
+| Autonomous uptime | >95% continuous operation over 24-hour campaigns | 5 |
 
 ---
 
@@ -367,5 +500,5 @@ MIT License. See [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  <sub>Built for the aero engineers who make 0.001s count.</sub>
+  <sub>Built for the engineers who make 0.001s count.</sub>
 </p>
